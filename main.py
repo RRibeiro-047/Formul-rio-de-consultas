@@ -95,4 +95,120 @@ botao_Atualizar.place(x=120, y=340)
 botao_Deletar = Button(frameBaixo, text="Deletar", width=10, height=1, bg=co7, fg=co1, font=('Ivy 10 bold'), relief=RAISED, overrelief=RIDGE)
 botao_Deletar.place(x=225, y=340)
 
+# --- armazenamento em memória e exibição na direita ---
+registros = []
+
+# Treeview para mostrar todos os registros no lado direito
+cols = ("nome", "email", "telefone", "data", "assunto")
+tv = ttk.Treeview(frameDireitaBaixo, columns=cols, show='headings', height=18)
+tv.heading('nome', text='Nome')
+tv.heading('email', text='Email')
+tv.heading('telefone', text='Telefone')
+tv.heading('data', text='Data')
+tv.heading('assunto', text='Assunto')
+tv.column('nome', width=120, anchor=W)
+tv.column('email', width=140, anchor=W)
+tv.column('telefone', width=100, anchor=W)
+tv.column('data', width=80, anchor=W)
+tv.column('assunto', width=220, anchor=W)
+tv.place(x=10, y=10)
+
+sb = Scrollbar(frameDireitaBaixo, orient=VERTICAL, command=tv.yview)
+tv.configure(yscrollcommand=sb.set)
+sb.place(x=570, y=10, height=360)
+
+
+def limpar_campos():
+	e_nome.delete(0, END)
+	e_email.delete(0, END)
+	e_telefone.delete(0, END)
+	try:
+		e_cal.set_date(date.today())
+	except Exception:
+		pass
+	e_assunto.delete('1.0', END)
+
+
+def atualizar_treeview():
+	for i in tv.get_children():
+		tv.delete(i)
+	for idx, r in enumerate(registros):
+		resumo = r['assunto'].replace('\n', ' ')
+		tv.insert('', END, iid=str(idx), values=(r['nome'], r['email'], r['telefone'], r['data'], resumo[:120]))
+
+
+def inserir():
+	nome = e_nome.get().strip()
+	email = e_email.get().strip()
+	telefone = e_telefone.get().strip()
+	try:
+		data_consulta = e_cal.get_date().strftime('%d/%m/%Y')
+	except Exception:
+		data_consulta = e_cal.get()
+	assunto = e_assunto.get('1.0', END).strip()
+	if not (nome and email and telefone and assunto):
+		messagebox.showwarning('Campos faltando', 'Preencha todos os campos obrigatórios (*)')
+		return
+	registros.append({'nome': nome, 'email': email, 'telefone': telefone, 'data': data_consulta, 'assunto': assunto})
+	atualizar_treeview()
+	limpar_campos()
+
+
+def selecionar_item(event=None):
+	sel = tv.selection()
+	if not sel:
+		return
+	idx = int(sel[0])
+	r = registros[idx]
+	e_nome.delete(0, END); e_nome.insert(0, r['nome'])
+	e_email.delete(0, END); e_email.insert(0, r['email'])
+	e_telefone.delete(0, END); e_telefone.insert(0, r['telefone'])
+	try:
+		d = datetime.strptime(r['data'], '%d/%m/%Y').date()
+		e_cal.set_date(d)
+	except Exception:
+		pass
+	e_assunto.delete('1.0', END); e_assunto.insert('1.0', r['assunto'])
+
+
+def atualizar_registro():
+	sel = tv.selection()
+	if not sel:
+		messagebox.showwarning('Selecionar', 'Selecione um registro para atualizar')
+		return
+	idx = int(sel[0])
+	nome = e_nome.get().strip()
+	email = e_email.get().strip()
+	telefone = e_telefone.get().strip()
+	try:
+		data_consulta = e_cal.get_date().strftime('%d/%m/%Y')
+	except Exception:
+		data_consulta = e_cal.get()
+	assunto = e_assunto.get('1.0', END).strip()
+	if not (nome and email and telefone and assunto):
+		messagebox.showwarning('Campos faltando', 'Preencha todos os campos obrigatórios (*)')
+		return
+	registros[idx] = {'nome': nome, 'email': email, 'telefone': telefone, 'data': data_consulta, 'assunto': assunto}
+	atualizar_treeview()
+	limpar_campos()
+
+
+def deletar_registro():
+	sel = tv.selection()
+	if not sel:
+		messagebox.showwarning('Selecionar', 'Selecione um registro para deletar')
+		return
+	idx = int(sel[0])
+	if messagebox.askyesno('Confirmar', 'Deseja deletar o registro selecionado?'):
+		registros.pop(idx)
+		atualizar_treeview()
+		limpar_campos()
+
+
+# vincular botões
+botao_inserir.config(command=inserir)
+botao_Atualizar.config(command=atualizar_registro)
+botao_Deletar.config(command=deletar_registro)
+tv.bind('<<TreeviewSelect>>', selecionar_item)
+
 janela.mainloop()
